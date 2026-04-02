@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --no-turbopack)",
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --no-turbopack --name=\"saas-gpc\")",
+      "Read(//d/OUTIL_GS/**)",
+      "Bash(npx create-next-app@latest saas-gpc --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --no-turbopack)",
+      "Bash(cp -r d:/OUTIL_GS/saas-gpc/. d:/OUTIL_GS/SAAS_GPC/)",
+      "Bash(rm -rf d:/OUTIL_GS/saas-gpc)",
+      "Bash(npm install:*)",
+      "Bash(npm list:*)",
+      "Bash(npx shadcn@latest init --yes --defaults)",
+      "Bash(npx shadcn@latest add button card input label textarea badge avatar dropdown-menu dialog sheet tabs separator skeleton toast progress --yes)",
+      "Bash(npx shadcn@latest add sonner select checkbox --yes)",
+      "Bash(npx shadcn@latest add button card input label textarea badge avatar dropdown-menu dialog sheet tabs separator skeleton progress --yes)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git branch:*)",
+      "Bash(git remote:*)",
+      "Bash(git config:*)",
+      "Bash(git -C d:/OUTIL_GS/SAAS_GPC add .)",
+      "Bash(git -C d:/OUTIL_GS/SAAS_GPC commit -m \"Initial commit — SAAS GPC Innolive\")",
+      "Bash(git -C d:/OUTIL_GS/SAAS_GPC branch -M main)",
+      "Bash(git -C d:/OUTIL_GS/SAAS_GPC remote add origin https://github.com/bsyalexis/innolivegpc.git)"
+    ]
+  }
+}
