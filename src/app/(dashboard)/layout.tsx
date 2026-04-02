@@ -25,7 +25,7 @@ export default async function DashboardLayout({
     .single()
 
   if (!user) {
-    redirect('/login')
+    redirect('/api/auth/signout')
   }
 
   if (user.role === 'CLIENT') {
