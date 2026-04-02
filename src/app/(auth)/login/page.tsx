@@ -24,24 +24,29 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
 
-    if (error) {
-      toast.error('Identifiants incorrects')
+      if (error) {
+        toast.error('Identifiants incorrects')
+        setLoading(false)
+        return
+      }
+
+      const role = data.user?.user_metadata?.role
+      if (role === 'CLIENT') {
+        router.push('/client')
+      } else {
+        router.push('/dashboard')
+      }
+      router.refresh()
+    } catch {
+      toast.error('Erreur de connexion, veuillez réessayer')
       setLoading(false)
-      return
     }
-
-    const role = data.user?.user_metadata?.role
-    if (role === 'CLIENT') {
-      router.push('/client')
-    } else {
-      router.push('/dashboard')
-    }
-    router.refresh()
   }
 
   return (
