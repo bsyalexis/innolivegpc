@@ -24,7 +24,10 @@
       "Bash(git -C d:/OUTIL_GS/SAAS_GPC add .)",
       "Bash(git -C d:/OUTIL_GS/SAAS_GPC commit -m \"Initial commit — SAAS GPC Innolive\")",
       "Bash(git -C d:/OUTIL_GS/SAAS_GPC branch -M main)",
-      "Bash(git -C d:/OUTIL_GS/SAAS_GPC remote add origin https://github.com/bsyalexis/innolivegpc.git)"
+      "Bash(git -C d:/OUTIL_GS/SAAS_GPC remote add origin https://github.com/bsyalexis/innolivegpc.git)",
+      "Bash(git -C d:/OUTIL_GS/SAAS_GPC push -u origin main)",
+      "Bash(npx supabase@latest db execute --db-url \"postgresql://postgres:postgres@db.vlkfnjneaxcesyzcvvao.supabase.co:5432/postgres\" --sql \"INSERT INTO public.users \\(id, email, full_name, role\\) VALUES \\('99e52fdf-3f4f-4624-ba59-e4834e0bf7d7', 'bsy.alexis@gmail.com', 'bsyalexis', 'ADMIN'\\);\")",
+      "Bash(claude mcp:*)"
     ]
   }
 }

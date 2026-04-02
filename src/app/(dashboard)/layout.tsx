@@ -24,7 +24,11 @@ export default async function DashboardLayout({
     .eq('id', authUser.id)
     .single()
 
-  if (!user || user.role === 'CLIENT') {
+  if (!user) {
+    redirect('/login')
+  }
+
+  if (user.role === 'CLIENT') {
     redirect('/client')
   }
 
