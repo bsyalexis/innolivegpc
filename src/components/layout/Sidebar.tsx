@@ -8,6 +8,7 @@ import {
   Settings,
   LogOut,
   Bell,
+  Users,
 } from 'lucide-react'
 import { cn, getInitials } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -22,9 +23,17 @@ const ROLE_LABELS: Record<string, string> = {
   CLIENT: 'Client',
 }
 
-const navItems = [
+interface NavItem {
+  href: string
+  label: string
+  icon: React.ElementType
+  adminOnly?: boolean
+}
+
+const navItems: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/dashboard/projects', label: 'Projets', icon: FolderKanban },
+  { href: '/dashboard/clients', label: 'Clients', icon: Users, adminOnly: true },
 ]
 
 interface SidebarProps {
@@ -36,6 +45,7 @@ export default function Sidebar({ user, unreadCount = 0 }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
+  const isAdmin = user.role === 'ADMIN'
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -56,24 +66,26 @@ export default function Sidebar({ user, unreadCount = 0 }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 space-y-1">
-        {navItems.map(({ href, label, icon: Icon }) => {
-          const isActive = pathname === href || pathname.startsWith(href + '/')
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={cn(
-                'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors',
-                isActive
-                  ? 'bg-[var(--primary)] text-white'
-                  : 'text-[var(--secondary-foreground)] hover:bg-[var(--secondary)] hover:text-[var(--foreground)]'
-              )}
-            >
-              <Icon size={16} />
-              {label}
-            </Link>
-          )
-        })}
+        {navItems
+          .filter((item) => !item.adminOnly || isAdmin)
+          .map(({ href, label, icon: Icon }) => {
+            const isActive = pathname === href || pathname.startsWith(href + '/')
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={cn(
+                  'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors',
+                  isActive
+                    ? 'bg-[var(--primary)] text-white'
+                    : 'text-[var(--secondary-foreground)] hover:bg-[var(--secondary)] hover:text-[var(--foreground)]'
+                )}
+              >
+                <Icon size={16} />
+                {label}
+              </Link>
+            )
+          })}
 
         {/* Notifications */}
         <Link
@@ -113,7 +125,12 @@ export default function Sidebar({ user, unreadCount = 0 }: SidebarProps) {
 
         <Link
           href="/dashboard/settings"
-          className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-[var(--secondary-foreground)] hover:bg-[var(--secondary)] hover:text-[var(--foreground)] transition-colors"
+          className={cn(
+            'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors',
+            pathname === '/dashboard/settings'
+              ? 'bg-[var(--primary)] text-white'
+              : 'text-[var(--secondary-foreground)] hover:bg-[var(--secondary)] hover:text-[var(--foreground)]'
+          )}
         >
           <Settings size={16} />
           Paramètres

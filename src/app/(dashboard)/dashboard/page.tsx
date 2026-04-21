@@ -3,9 +3,11 @@ import { redirect } from 'next/navigation'
 import { PROJECT_STATUS_LABELS, type ProjectStatus } from '@/types'
 import { formatDate } from '@/lib/utils'
 import Link from 'next/link'
-import { FolderKanban, CheckSquare, Clock, TrendingUp } from 'lucide-react'
+import { FolderKanban, CheckSquare, Clock, TrendingUp, AlertCircle } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import DashboardRealtimeRefresh from './DashboardRealtimeRefresh'
+import WeeklyTimeline from '@/components/dashboard/WeeklyTimeline'
 
 const STATUS_COLORS: Record<ProjectStatus, string> = {
   en_brief: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
@@ -13,6 +15,13 @@ const STATUS_COLORS: Record<ProjectStatus, string> = {
   en_livraison: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
   livre: 'bg-green-500/10 text-green-400 border-green-500/20',
   archive: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20',
+}
+
+const TASK_PRIORITY_COLORS: Record<string, string> = {
+  urgente: 'text-red-400',
+  haute: 'text-orange-400',
+  normale: 'text-blue-400',
+  basse: 'text-zinc-400',
 }
 
 export default async function DashboardPage() {
@@ -29,7 +38,6 @@ export default async function DashboardPage() {
 
   const isAdmin = currentUser?.role === 'ADMIN'
 
-  // TEAM : seulement les projets dont ils sont membres. ADMIN : tous les projets.
   const projectsQuery = isAdmin
     ? supabase.from('projects').select('id, status').neq('status', 'archive')
     : supabase
@@ -50,19 +58,30 @@ export default async function DashboardPage() {
         .eq('user_id', authUser.id)
         .limit(5)
 
+  const urgentTasksQuery = supabase
+    .from('tasks')
+    .select('id, title, priority, due_date, project_id, project:projects!tasks_project_id_fkey(name)')
+    .eq('assignee_id', authUser.id)
+    .in('priority', ['urgente', 'haute'])
+    .neq('status', 'termine')
+    .order('due_date', { ascending: true })
+    .limit(5)
+
   const [
     { data: projectsRaw },
     { data: myTasks },
     { data: recentRaw },
+    { data: urgentTasksRaw },
   ] = await Promise.all([
     projectsQuery,
     supabase.from('tasks').select('id, status').eq('assignee_id', authUser.id).neq('status', 'termine'),
     recentQuery,
+    urgentTasksQuery,
   ])
 
-  // Normalise les résultats selon le rôle
   type ProjectRow = { id: string; status: string }
   type RecentRow = { id: string; name: string; status: string; deadline?: string | null; client?: { full_name: string } | null }
+  type UrgentTask = { id: string; title: string; priority: string; due_date: string | null; project_id: string; project?: { name: string } | null }
 
   const projects: ProjectRow[] = isAdmin
     ? (projectsRaw as ProjectRow[] | null) ?? []
@@ -71,6 +90,8 @@ export default async function DashboardPage() {
   const recentProjects: RecentRow[] = isAdmin
     ? (recentRaw as RecentRow[] | null) ?? []
     : ((recentRaw as { project: RecentRow }[] | null) ?? []).map((r) => r.project)
+
+  const urgentTasks: UrgentTask[] = (urgentTasksRaw as UrgentTask[] | null) ?? []
 
   const statusCounts = (projects || []).reduce((acc, p) => {
     acc[p.status as ProjectStatus] = (acc[p.status as ProjectStatus] || 0) + 1
@@ -108,6 +129,9 @@ export default async function DashboardPage() {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Refresh temps réel invisible */}
+      <DashboardRealtimeRefresh userId={authUser.id} />
+
       <div>
         <h1 className="text-2xl font-bold text-[var(--foreground)]">
           Bonjour, {firstName}
@@ -134,65 +158,127 @@ export default async function DashboardPage() {
         ))}
       </div>
 
-      {/* Projets récents */}
-      <Card className="bg-[var(--card)] border-[var(--border)]">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-semibold text-[var(--foreground)]">
-              Projets récents
-            </CardTitle>
-            <Link
-              href="/dashboard/projects"
-              className="text-xs text-[var(--primary)] hover:underline"
-            >
-              Voir tout →
-            </Link>
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="divide-y divide-[var(--border)]">
-            {recentProjects?.length === 0 && (
-              <p className="text-sm text-[var(--muted-foreground)] p-4">
-                Aucun projet pour l&apos;instant.
-              </p>
-            )}
-            {recentProjects?.map((project) => (
+      {/* Timeline hebdomadaire */}
+      <WeeklyTimeline userId={authUser.id} isAdmin={isAdmin} />
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        {/* Projets récents */}
+        <Card className="bg-[var(--card)] border-[var(--border)]">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-semibold text-[var(--foreground)]">
+                Projets récents
+              </CardTitle>
               <Link
-                key={project.id}
-                href={`/dashboard/projects/${project.id}`}
-                className="flex items-center justify-between px-4 py-3 hover:bg-[var(--muted)] transition-colors"
+                href="/dashboard/projects"
+                className="text-xs text-[var(--primary)] hover:underline"
               >
-                <div className="flex items-center gap-3">
-                  <FolderKanban size={15} className="text-[var(--muted-foreground)]" />
-                  <div>
-                    <p className="text-sm font-medium text-[var(--foreground)]">
-                      {project.name}
-                    </p>
-                    {project.client && (
-                      <p className="text-xs text-[var(--muted-foreground)]">
-                        {(project.client as unknown as { full_name: string }).full_name}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  {project.deadline && (
-                    <span className="text-xs text-[var(--muted-foreground)]">
-                      {formatDate(project.deadline)}
-                    </span>
-                  )}
-                  <Badge
-                    variant="outline"
-                    className={`text-xs ${STATUS_COLORS[project.status as ProjectStatus]}`}
-                  >
-                    {PROJECT_STATUS_LABELS[project.status as ProjectStatus]}
-                  </Badge>
-                </div>
+                Voir tout →
               </Link>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="divide-y divide-[var(--border)]">
+              {recentProjects?.length === 0 && (
+                <p className="text-sm text-[var(--muted-foreground)] p-4">
+                  Aucun projet pour l&apos;instant.
+                </p>
+              )}
+              {recentProjects?.map((project) => (
+                <Link
+                  key={project.id}
+                  href={`/dashboard/projects/${project.id}`}
+                  className="flex items-center justify-between px-4 py-3 hover:bg-[var(--muted)] transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <FolderKanban size={15} className="text-[var(--muted-foreground)]" />
+                    <div>
+                      <p className="text-sm font-medium text-[var(--foreground)]">
+                        {project.name}
+                      </p>
+                      {project.client && (
+                        <p className="text-xs text-[var(--muted-foreground)]">
+                          {(project.client as unknown as { full_name: string }).full_name}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {project.deadline && (
+                      <span className="text-xs text-[var(--muted-foreground)]">
+                        {formatDate(project.deadline)}
+                      </span>
+                    )}
+                    <Badge
+                      variant="outline"
+                      className={`text-xs ${STATUS_COLORS[project.status as ProjectStatus]}`}
+                    >
+                      {PROJECT_STATUS_LABELS[project.status as ProjectStatus]}
+                    </Badge>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Tâches urgentes */}
+        <Card className="bg-[var(--card)] border-[var(--border)]">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-semibold text-[var(--foreground)] flex items-center gap-2">
+                <AlertCircle size={14} className="text-orange-400" />
+                Tâches prioritaires
+              </CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="divide-y divide-[var(--border)]">
+              {urgentTasks.length === 0 && (
+                <p className="text-sm text-[var(--muted-foreground)] p-4">
+                  Aucune tâche prioritaire en cours.
+                </p>
+              )}
+              {urgentTasks.map((task) => (
+                <Link
+                  key={task.id}
+                  href={`/dashboard/projects/${task.project_id}/tasks`}
+                  className="flex items-center justify-between px-4 py-3 hover:bg-[var(--muted)] transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <CheckSquare size={15} className={TASK_PRIORITY_COLORS[task.priority] ?? 'text-[var(--muted-foreground)]'} />
+                    <div>
+                      <p className="text-sm font-medium text-[var(--foreground)]">{task.title}</p>
+                      {task.project && (
+                        <p className="text-xs text-[var(--muted-foreground)]">
+                          {(task.project as unknown as { name: string }).name}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {task.due_date && (
+                      <span className="text-xs text-[var(--muted-foreground)]">
+                        {formatDate(task.due_date)}
+                      </span>
+                    )}
+                    <Badge
+                      variant="outline"
+                      className={`text-xs capitalize ${
+                        task.priority === 'urgente'
+                          ? 'bg-red-500/10 text-red-400 border-red-500/20'
+                          : 'bg-orange-500/10 text-orange-400 border-orange-500/20'
+                      }`}
+                    >
+                      {task.priority}
+                    </Badge>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
