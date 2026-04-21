@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
   startOfWeek,
@@ -9,9 +9,7 @@ import {
   subWeeks,
   eachDayOfInterval,
   format,
-  isSameDay,
   isToday,
-  parseISO,
 } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, CalendarDays, CheckSquare, FolderKanban } from 'lucide-react'
@@ -55,88 +53,98 @@ export default function WeeklyTimeline({ userId, isAdmin }: Props) {
   const [tasks, setTasks] = useState<TimelineTask[]>([])
   const [projects, setProjects] = useState<TimelineProject[]>([])
   const [loading, setLoading] = useState(true)
-  const supabase = createClient()
 
-  const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 })
-  const days = eachDayOfInterval({ start: weekStart, end: weekEnd })
+  const weekEnd = useMemo(() => endOfWeek(weekStart, { weekStartsOn: 1 }), [weekStart])
+  const days = useMemo(
+    () => eachDayOfInterval({ start: weekStart, end: weekEnd }),
+    [weekStart, weekEnd]
+  )
 
-  const fetchData = useCallback(async () => {
-    setLoading(true)
+  useEffect(() => {
+    let cancelled = false
+    const supabase = createClient()
     const from = format(weekStart, 'yyyy-MM-dd')
     const to = format(weekEnd, 'yyyy-MM-dd')
 
-    const tasksQuery = isAdmin
-      ? supabase
-          .from('tasks')
-          .select('id, title, due_date, priority, project_id, project:projects!tasks_project_id_fkey(name)')
-          .gte('due_date', from)
-          .lte('due_date', to)
-          .neq('status', 'termine')
-          .order('due_date', { ascending: true })
-      : supabase
-          .from('tasks')
-          .select('id, title, due_date, priority, project_id, project:projects!tasks_project_id_fkey(name)')
-          .eq('assignee_id', userId)
-          .gte('due_date', from)
-          .lte('due_date', to)
-          .neq('status', 'termine')
-          .order('due_date', { ascending: true })
+    async function run() {
+      setLoading(true)
 
-    const projectsQuery = isAdmin
-      ? supabase
-          .from('projects')
-          .select('id, name, deadline')
-          .gte('deadline', from)
-          .lte('deadline', to)
-          .neq('status', 'archive')
-      : supabase
-          .from('project_members')
-          .select('project:projects!project_members_project_id_fkey(id, name, deadline)')
-          .eq('user_id', userId)
+      const tasksQuery = isAdmin
+        ? supabase
+            .from('tasks')
+            .select('id, title, due_date, priority, project_id, project:projects!tasks_project_id_fkey(name)')
+            .gte('due_date', from)
+            .lte('due_date', to)
+            .neq('status', 'termine')
+            .order('due_date', { ascending: true })
+        : supabase
+            .from('tasks')
+            .select('id, title, due_date, priority, project_id, project:projects!tasks_project_id_fkey(name)')
+            .eq('assignee_id', userId)
+            .gte('due_date', from)
+            .lte('due_date', to)
+            .neq('status', 'termine')
+            .order('due_date', { ascending: true })
 
-    const [{ data: tasksRaw }, { data: projectsRaw }] = await Promise.all([
-      tasksQuery,
-      projectsQuery,
-    ])
+      const projectsQuery = isAdmin
+        ? supabase
+            .from('projects')
+            .select('id, name, deadline')
+            .gte('deadline', from)
+            .lte('deadline', to)
+            .neq('status', 'archive')
+        : supabase
+            .from('project_members')
+            .select('project:projects!project_members_project_id_fkey(id, name, deadline)')
+            .eq('user_id', userId)
 
-    const normalizedTasks: TimelineTask[] = (tasksRaw ?? []).map((t: Record<string, unknown>) => ({
-      id: t.id as string,
-      title: t.title as string,
-      due_date: t.due_date as string,
-      priority: t.priority as TaskPriority,
-      project_id: t.project_id as string,
-      project_name: ((t.project as Record<string, unknown>)?.name as string) ?? '',
-    }))
+      const [{ data: tasksRaw }, { data: projectsRaw }] = await Promise.all([
+        tasksQuery,
+        projectsQuery,
+      ])
 
-    let normalizedProjects: TimelineProject[] = []
-    if (isAdmin) {
-      normalizedProjects = (projectsRaw ?? [])
-        .filter((p: Record<string, unknown>) => p.deadline)
-        .map((p: Record<string, unknown>) => ({
-          id: p.id as string,
-          name: p.name as string,
-          deadline: p.deadline as string,
-        }))
-    } else {
-      type MemberRow = { project: { id: string; name: string; deadline: string | null } }
-      normalizedProjects = ((projectsRaw ?? []) as unknown as MemberRow[])
-        .map((r) => r.project)
-        .filter((p) => p.deadline && p.deadline >= from && p.deadline <= to)
-        .map((p) => ({
-          id: p.id,
-          name: p.name,
-          deadline: p.deadline as string,
-        }))
+      if (cancelled) return
+
+      const normalizedTasks: TimelineTask[] = (tasksRaw ?? []).map((t: Record<string, unknown>) => ({
+        id: t.id as string,
+        title: t.title as string,
+        due_date: t.due_date as string,
+        priority: t.priority as TaskPriority,
+        project_id: t.project_id as string,
+        project_name: ((t.project as Record<string, unknown>)?.name as string) ?? '',
+      }))
+
+      let normalizedProjects: TimelineProject[] = []
+      if (isAdmin) {
+        normalizedProjects = (projectsRaw ?? [])
+          .filter((p: Record<string, unknown>) => p.deadline)
+          .map((p: Record<string, unknown>) => ({
+            id: p.id as string,
+            name: p.name as string,
+            deadline: p.deadline as string,
+          }))
+      } else {
+        type MemberRow = { project: { id: string; name: string; deadline: string | null } }
+        normalizedProjects = ((projectsRaw ?? []) as unknown as MemberRow[])
+          .map((r) => r.project)
+          .filter((p) => p.deadline && p.deadline >= from && p.deadline <= to)
+          .map((p) => ({
+            id: p.id,
+            name: p.name,
+            deadline: p.deadline as string,
+          }))
+      }
+
+      setTasks(normalizedTasks)
+      setProjects(normalizedProjects)
+      setLoading(false)
     }
 
-    setTasks(normalizedTasks)
-    setProjects(normalizedProjects)
-    setLoading(false)
-  }, [weekStart, userId, isAdmin, supabase, weekEnd])
-
-  useEffect(() => {
-    fetchData()
-  }, [fetchData])
+    run()
+    return () => {
+      cancelled = true
+    }
+  }, [weekStart, weekEnd, userId, isAdmin])
 
   const getItemsForDay = (day: Date) => {
     const dayStr = format(day, 'yyyy-MM-dd')
