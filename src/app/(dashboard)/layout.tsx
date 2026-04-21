@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Sidebar from '@/components/layout/Sidebar'
 import { Toaster } from '@/components/ui/sonner'
+import { type User } from '@/types'
 
 export default async function DashboardLayout({
   children,
@@ -41,7 +42,7 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex min-h-screen bg-[var(--background)]">
-      <Sidebar unreadCount={unreadCount ?? 0} />
+      <Sidebar user={user as User} unreadCount={unreadCount ?? 0} />
       <div className="flex flex-col flex-1 min-w-0">
         <main className="flex-1 overflow-auto">
           {children}

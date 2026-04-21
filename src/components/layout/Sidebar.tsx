@@ -9,10 +9,18 @@ import {
   LogOut,
   Bell,
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, getInitials } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { type User } from '@/types'
+
+const ROLE_LABELS: Record<string, string> = {
+  ADMIN: 'Administrateur',
+  TEAM: 'Équipe',
+  CLIENT: 'Client',
+}
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -20,10 +28,11 @@ const navItems = [
 ]
 
 interface SidebarProps {
+  user: User
   unreadCount?: number
 }
 
-export default function Sidebar({ unreadCount = 0 }: SidebarProps) {
+export default function Sidebar({ user, unreadCount = 0 }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
@@ -88,6 +97,20 @@ export default function Sidebar({ unreadCount = 0 }: SidebarProps) {
 
       {/* Footer */}
       <div className="space-y-1 border-t border-[var(--border)] pt-4">
+        {/* User card */}
+        <div className="flex items-center gap-2.5 px-3 py-2 mb-1">
+          <Avatar className="h-7 w-7 shrink-0">
+            <AvatarImage src={user.avatar_url || undefined} />
+            <AvatarFallback className="bg-[var(--primary)]/20 text-[var(--primary)] text-xs font-bold">
+              {getInitials(user.full_name)}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-[var(--foreground)] truncate">{user.full_name}</p>
+            <p className="text-xs text-[var(--muted-foreground)]">{ROLE_LABELS[user.role]}</p>
+          </div>
+        </div>
+
         <Link
           href="/dashboard/settings"
           className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-[var(--secondary-foreground)] hover:bg-[var(--secondary)] hover:text-[var(--foreground)] transition-colors"

@@ -21,29 +21,67 @@ export default async function DashboardPage() {
   const { data: { user: authUser } } = await supabase.auth.getUser()
   if (!authUser) redirect('/login')
 
+  const { data: currentUser } = await supabase
+    .from('users')
+    .select('full_name, role')
+    .eq('id', authUser.id)
+    .single()
+
+  const isAdmin = currentUser?.role === 'ADMIN'
+
+  // TEAM : seulement les projets dont ils sont membres. ADMIN : tous les projets.
+  const projectsQuery = isAdmin
+    ? supabase.from('projects').select('id, status').neq('status', 'archive')
+    : supabase
+        .from('project_members')
+        .select('project:projects!project_members_project_id_fkey(id, status)')
+        .eq('user_id', authUser.id)
+
+  const recentQuery = isAdmin
+    ? supabase
+        .from('projects')
+        .select('id, name, status, deadline, client:users!projects_client_id_fkey(full_name)')
+        .neq('status', 'archive')
+        .order('updated_at', { ascending: false })
+        .limit(5)
+    : supabase
+        .from('project_members')
+        .select('project:projects!project_members_project_id_fkey(id, name, status, deadline, client:users!projects_client_id_fkey(full_name))')
+        .eq('user_id', authUser.id)
+        .limit(5)
+
   const [
-    { data: projects },
+    { data: projectsRaw },
     { data: myTasks },
-    { data: recentProjects },
+    { data: recentRaw },
   ] = await Promise.all([
-    supabase.from('projects').select('id, status').neq('status', 'archive'),
+    projectsQuery,
     supabase.from('tasks').select('id, status').eq('assignee_id', authUser.id).neq('status', 'termine'),
-    supabase
-      .from('projects')
-      .select('id, name, status, deadline, client:users!projects_client_id_fkey(full_name)')
-      .neq('status', 'archive')
-      .order('updated_at', { ascending: false })
-      .limit(5),
+    recentQuery,
   ])
+
+  // Normalise les résultats selon le rôle
+  type ProjectRow = { id: string; status: string }
+  type RecentRow = { id: string; name: string; status: string; deadline?: string | null; client?: { full_name: string } | null }
+
+  const projects: ProjectRow[] = isAdmin
+    ? (projectsRaw as ProjectRow[] | null) ?? []
+    : ((projectsRaw as { project: ProjectRow }[] | null) ?? []).map((r) => r.project)
+
+  const recentProjects: RecentRow[] = isAdmin
+    ? (recentRaw as RecentRow[] | null) ?? []
+    : ((recentRaw as { project: RecentRow }[] | null) ?? []).map((r) => r.project)
 
   const statusCounts = (projects || []).reduce((acc, p) => {
     acc[p.status as ProjectStatus] = (acc[p.status as ProjectStatus] || 0) + 1
     return acc
   }, {} as Record<ProjectStatus, number>)
 
+  const firstName = currentUser?.full_name?.split(' ')[0] ?? 'vous'
+
   const stats = [
     {
-      label: 'Projets actifs',
+      label: isAdmin ? 'Projets actifs' : 'Mes projets',
       value: projects?.length ?? 0,
       icon: FolderKanban,
       color: 'text-[var(--primary)]',
@@ -71,9 +109,11 @@ export default async function DashboardPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-[var(--foreground)]">Dashboard</h1>
+        <h1 className="text-2xl font-bold text-[var(--foreground)]">
+          Bonjour, {firstName}
+        </h1>
         <p className="text-sm text-[var(--muted-foreground)] mt-1">
-          Vue d&apos;ensemble de l&apos;activité Innolive
+          {isAdmin ? "Vue d'ensemble de l'activité Innolive" : 'Vos projets et tâches en cours'}
         </p>
       </div>
 
