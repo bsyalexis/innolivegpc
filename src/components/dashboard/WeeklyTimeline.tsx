@@ -13,8 +13,6 @@ import {
 } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, CalendarDays, CheckSquare, FolderKanban } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
 import { type TaskPriority } from '@/types'
 import { cn } from '@/lib/utils'
@@ -40,10 +38,10 @@ interface Props {
 }
 
 const PRIORITY_COLORS: Record<TaskPriority, string> = {
-  basse: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20',
-  normale: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  haute: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-  urgente: 'bg-red-500/10 text-red-400 border-red-500/20',
+  basse:   'bg-[#f5f5f7] text-[#6B6B74] border-[rgba(10,10,10,0.08)]',
+  normale: 'bg-[#E8F0FF] text-[#1E5FFF] border-[#1E5FFF30]',
+  haute:   'bg-[#FFE8E0] text-[#FF4E1C] border-[#FF4E1C30]',
+  urgente: 'bg-red-50 text-red-600 border-red-200',
 }
 
 export default function WeeklyTimeline({ userId, isAdmin }: Props) {
@@ -156,18 +154,18 @@ export default function WeeklyTimeline({ userId, isAdmin }: Props) {
   const totalItems = tasks.length + projects.length
 
   return (
-    <Card className="bg-[var(--card)] border-[var(--border)]">
-      <CardHeader className="pb-3">
+    <div className="bg-[var(--card)] rounded-[22px] border border-[var(--border)] overflow-hidden">
+      <div className="px-5 py-4 border-b border-[var(--border)]">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <CardTitle className="text-sm font-semibold text-[var(--foreground)] flex items-center gap-2">
-              <CalendarDays size={15} />
-              Agenda de la semaine
-            </CardTitle>
+          <div className="flex items-center gap-3">
+            <h3 className="headline text-[18px] uppercase flex items-center gap-2">
+              <CalendarDays size={16} />
+              Agenda <span className="text-[var(--muted-foreground)]">semaine</span>
+            </h3>
             {totalItems > 0 && (
-              <Badge variant="outline" className="text-xs bg-[var(--primary)]/10 text-[var(--primary)] border-[var(--primary)]/20">
+              <span className="pill text-[11px] border bg-[var(--blue-soft)] text-[var(--blue)] border-[#1E5FFF30]">
                 {totalItems} élément{totalItems > 1 ? 's' : ''}
-              </Badge>
+              </span>
             )}
           </div>
           <div className="flex items-center gap-1">
@@ -188,9 +186,9 @@ export default function WeeklyTimeline({ userId, isAdmin }: Props) {
             </button>
           </div>
         </div>
-      </CardHeader>
+      </div>
 
-      <CardContent className="p-0 pb-2">
+      <div>
         {loading ? (
           <div className="px-4 py-8 text-center text-sm text-[var(--muted-foreground)]">
             Chargement…
@@ -233,7 +231,7 @@ export default function WeeklyTimeline({ userId, isAdmin }: Props) {
                     <Link
                       key={p.id}
                       href={`/dashboard/projects/${p.id}`}
-                      className="group flex items-center gap-1 px-1.5 py-1 rounded text-[10px] bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 transition-colors truncate"
+                      className="group flex items-center gap-1 px-1.5 py-1 rounded text-[10px] bg-[#E8F0FF] text-[#1E5FFF] border border-[#1E5FFF30] hover:bg-[#d4e4ff] transition-colors truncate"
                       title={p.name}
                     >
                       <FolderKanban size={9} className="shrink-0" />
@@ -260,7 +258,7 @@ export default function WeeklyTimeline({ userId, isAdmin }: Props) {
             })}
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }

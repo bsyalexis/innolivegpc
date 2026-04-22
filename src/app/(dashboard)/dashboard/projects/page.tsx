@@ -1,18 +1,16 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Plus, FolderKanban, Calendar, User } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { Plus, Calendar, User } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { PROJECT_STATUS_LABELS, type ProjectStatus } from '@/types'
 
-const STATUS_COLORS: Record<ProjectStatus, string> = {
-  en_brief: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
-  en_production: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  en_livraison: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-  livre: 'bg-green-500/10 text-green-400 border-green-500/20',
-  archive: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20',
+const STATUS_STYLES: Record<ProjectStatus, { pill: string; dot: string; accent: string }> = {
+  en_brief:      { pill: 'bg-[#f5c51820] text-[#b8930a] border-[#f5c51840]',             dot: '#f5c518',       accent: '#f5c518' },
+  en_production: { pill: 'bg-[var(--blue-soft)] text-[var(--blue)] border-[#1E5FFF30]',   dot: 'var(--blue)',   accent: 'var(--blue)' },
+  en_livraison:  { pill: 'bg-[var(--orange-soft)] text-[var(--orange)] border-[#FF4E1C30]', dot: 'var(--orange)', accent: 'var(--orange)' },
+  livre:         { pill: 'bg-[#10b98120] text-[#059669] border-[#10b98130]',              dot: '#10b981',       accent: '#10b981' },
+  archive:       { pill: 'bg-[var(--chip)] text-[var(--muted-foreground)] border-transparent', dot: '#9ca3af',  accent: '#9ca3af' },
 }
 
 export default async function ProjectsPage() {
@@ -40,91 +38,111 @@ export default async function ProjectsPage() {
     'en_brief', 'en_production', 'en_livraison', 'livre', 'archive'
   ]
 
+  const total = projects?.length ?? 0
+
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-[var(--foreground)]">Projets</h1>
-          <p className="text-sm text-[var(--muted-foreground)] mt-1">
-            {projects?.length ?? 0} projet{(projects?.length ?? 0) > 1 ? 's' : ''}
-          </p>
-        </div>
-        <Button asChild className="bg-[var(--primary)] hover:bg-indigo-500 text-white">
-          <Link href="/dashboard/projects/new">
-            <Plus size={15} className="mr-2" />
+    <div className="space-y-6">
+
+      {/* Hero */}
+      <div>
+        <p className="text-[11px] text-[var(--muted-foreground)] tracking-widest uppercase mb-2">
+          {total} projet{total > 1 ? 's' : ''} · toutes catégories
+        </p>
+        <div className="flex items-end justify-between gap-4">
+          <h1 className="headline text-[44px] leading-[0.95] uppercase">
+            Nos&nbsp;<span className="highlight-blue">Projets</span>
+            <span className="text-[var(--muted-foreground)]">&nbsp;&amp;&nbsp;</span>
+            <span className="highlight-orange">Clients</span>
+          </h1>
+          <Link
+            href="/dashboard/projects/new"
+            className="flex items-center gap-2 px-5 py-3 rounded-full bg-[var(--ink)] text-white text-[13px] font-semibold shrink-0 transition-transform hover:-translate-y-px"
+          >
+            <Plus size={15} />
             Nouveau projet
           </Link>
-        </Button>
+        </div>
       </div>
 
-      {/* Filtres par statut */}
+      {/* Groupes par statut */}
       {statusOrder.map((status) => {
         const list = grouped[status]
         if (!list || list.length === 0) return null
+        const style = STATUS_STYLES[status]
         return (
           <div key={status}>
-            <div className="flex items-center gap-2 mb-3">
-              <Badge
-                variant="outline"
-                className={`text-xs ${STATUS_COLORS[status]}`}
-              >
+            <div className="flex items-center gap-3 mb-3">
+              <span className="w-2.5 h-2.5 rounded-sm" style={{ background: style.dot }} />
+              <span className="headline text-[15px] uppercase tracking-wide">
                 {PROJECT_STATUS_LABELS[status]}
-              </Badge>
-              <span className="text-xs text-[var(--muted-foreground)]">
+              </span>
+              <span className={`pill text-[11px] border ${style.pill}`}>
                 {list.length}
               </span>
             </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-              {list.map((project) => (
-                <Link
-                  key={project.id}
-                  href={`/dashboard/projects/${project.id}`}
-                  className="group bg-[var(--card)] border border-[var(--border)] rounded-lg p-4 hover:border-[var(--primary)]/40 hover:bg-[var(--muted)] transition-all space-y-3"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <FolderKanban size={15} className="text-[var(--primary)] shrink-0 mt-0.5" />
-                      <h3 className="text-sm font-semibold text-[var(--foreground)] group-hover:text-[var(--primary)] transition-colors line-clamp-1">
-                        {project.name}
-                      </h3>
+              {list.map((project) => {
+                const clientName = (project.client as unknown as { full_name: string } | null)?.full_name
+                return (
+                  <Link
+                    key={project.id}
+                    href={`/dashboard/projects/${project.id}`}
+                    className="group bg-[var(--card)] border border-[var(--border)] rounded-[18px] overflow-hidden transition-transform hover:-translate-y-0.5"
+                    style={{ boxShadow: '0 2px 8px rgba(10,10,10,0.04)' }}
+                  >
+                    <div className="h-1.5 w-full" style={{ background: style.accent }} />
+                    <div className="p-4 space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="headline text-[16px] uppercase leading-tight line-clamp-2 group-hover:text-[var(--blue)] transition-colors">
+                          {project.name}
+                        </h3>
+                        <span className={`pill text-[11px] border shrink-0 ${style.pill}`}>
+                          {PROJECT_STATUS_LABELS[project.status as ProjectStatus]}
+                        </span>
+                      </div>
+
+                      {project.brief && (
+                        <p className="text-[12px] text-[var(--muted-foreground)] line-clamp-2 leading-relaxed">
+                          {project.brief}
+                        </p>
+                      )}
+
+                      <div className="flex items-center justify-between text-[12px] text-[var(--muted-foreground)] pt-1 border-t border-[var(--border)]">
+                        {clientName ? (
+                          <div className="flex items-center gap-1.5">
+                            <User size={11} />
+                            <span className="truncate max-w-[130px]">{clientName}</span>
+                          </div>
+                        ) : <span />}
+                        {project.deadline && (
+                          <div className="flex items-center gap-1.5">
+                            <Calendar size={11} />
+                            <span>{formatDate(project.deadline)}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-
-                  {project.brief && (
-                    <p className="text-xs text-[var(--muted-foreground)] line-clamp-2">
-                      {project.brief}
-                    </p>
-                  )}
-
-                  <div className="flex items-center justify-between text-xs text-[var(--muted-foreground)]">
-                    {project.client && (
-                      <div className="flex items-center gap-1">
-                        <User size={11} />
-                        <span>{(project.client as unknown as { full_name: string }).full_name}</span>
-                      </div>
-                    )}
-                    {project.deadline && (
-                      <div className="flex items-center gap-1">
-                        <Calendar size={11} />
-                        <span>{formatDate(project.deadline)}</span>
-                      </div>
-                    )}
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                )
+              })}
             </div>
           </div>
         )
       })}
 
+      {/* Empty state */}
       {(!projects || projects.length === 0) && (
-        <div className="text-center py-20 text-[var(--muted-foreground)]">
-          <FolderKanban size={40} className="mx-auto mb-3 opacity-30" />
-          <p className="text-sm">Aucun projet pour l&apos;instant.</p>
-          <Button asChild className="mt-4 bg-[var(--primary)] hover:bg-indigo-500 text-white">
-            <Link href="/dashboard/projects/new">Créer le premier projet</Link>
-          </Button>
+        <div className="flex flex-col items-center justify-center py-24 text-[var(--muted-foreground)]">
+          <div className="ghost-word text-[80px] leading-none mb-4">VIDE</div>
+          <p className="text-[14px] mb-6">Aucun projet pour l&apos;instant.</p>
+          <Link
+            href="/dashboard/projects/new"
+            className="flex items-center gap-2 px-6 py-3 rounded-full bg-[var(--ink)] text-white text-[13px] font-semibold transition-transform hover:-translate-y-px"
+          >
+            <Plus size={15} />
+            Créer le premier projet
+          </Link>
         </div>
       )}
     </div>

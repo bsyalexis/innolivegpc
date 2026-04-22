@@ -1,31 +1,41 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0f0f0f;
-  --foreground: #fafafa;
-  --card: #1a1a1a;
-  --card-foreground: #fafafa;
-  --primary: #6366f1;
+  /* Innolive brand tokens */
+  --blue: #1E5FFF;
+  --blue-soft: #E8F0FF;
+  --orange: #FF4E1C;
+  --orange-soft: #FFE8E0;
+  --ink: #0A0A0A;
+  --chip: #ECECEF;
+
+  /* Semantic (shadcn + components) */
+  --background: #F2F2F5;
+  --foreground: #0A0A0A;
+  --card: #FFFFFF;
+  --card-foreground: #0A0A0A;
+  --primary: #1E5FFF;
   --primary-foreground: #ffffff;
-  --secondary: #27272a;
-  --secondary-foreground: #a1a1aa;
-  --muted: #1e1e1e;
-  --muted-foreground: #71717a;
-  --accent: #6366f1;
+  --secondary: #F5F5F7;
+  --secondary-foreground: #0A0A0A;
+  --muted: #ECECEF;
+  --muted-foreground: #6B6B74;
+  --accent: #FF4E1C;
   --accent-foreground: #ffffff;
   --destructive: #ef4444;
-  --border: #27272a;
-  --input: #1e1e1e;
-  --ring: #6366f1;
-  --sidebar-bg: #111111;
-  --radius: 0.5rem;
+  --border: rgba(10, 10, 10, 0.08);
+  --input: #F5F5F7;
+  --ring: #1E5FFF;
+  --sidebar-bg: #FFFFFF;
+  --radius: 0.75rem;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-archivo);
+  --font-mono: ui-monospace, monospace;
 }
 
 * {
@@ -36,11 +46,118 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+  font-family: var(--font-sans, 'Inter', ui-sans-serif, system-ui, sans-serif);
+  font-size: 14px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
 
-::-webkit-scrollbar { width: 5px; height: 5px; }
+/* Headline / display typography — Archivo Black */
+.headline {
+  font-family: var(--font-display, 'Archivo', 'Inter', sans-serif);
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+/* Wordmark */
+.wordmark {
+  font-family: var(--font-display, 'Archivo', sans-serif);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+}
+
+/* Highlight pills sur texte (façon Innolive site) */
+.highlight-blue,
+.highlight-orange {
+  display: inline-block;
+  padding: 0.05em 0.35em;
+  border-radius: 999px;
+  color: white;
+}
+.highlight-blue  { background: var(--blue); }
+.highlight-orange { background: var(--orange); }
+
+/* Ghost word (grand texte en creux) */
+.ghost-word {
+  font-family: var(--font-display, 'Archivo', sans-serif);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(10, 10, 10, 0.06);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Logo mark — carré bleu avec triangle play */
+.logo-mark {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: var(--blue);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+}
+.logo-mark::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-left: 10px solid white;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  margin-left: 2px;
+}
+
+/* Pill badges */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
+.pill-blue   { background: var(--blue);   color: white; }
+.pill-orange { background: var(--orange); color: white; }
+.pill-ghost  { background: var(--chip);   color: var(--foreground); }
+
+/* Progress track */
+.track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--chip);
+  overflow: hidden;
+}
+.track > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+}
+
+/* Diagonal stripes for project card covers */
+.stripes-blue {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(30, 95, 255, 0.1) 0 10px,
+    transparent 10px 20px
+  );
+}
+.stripes-orange {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(255, 78, 28, 0.12) 0 10px,
+    transparent 10px 20px
+  );
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #52525b; }
+::-webkit-scrollbar-thumb { background: var(--chip); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #d0d0d6; }

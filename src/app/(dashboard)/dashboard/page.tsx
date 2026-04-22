@@ -4,24 +4,22 @@ import { PROJECT_STATUS_LABELS, type ProjectStatus } from '@/types'
 import { formatDate } from '@/lib/utils'
 import Link from 'next/link'
 import { FolderKanban, CheckSquare, Clock, TrendingUp, AlertCircle } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import DashboardRealtimeRefresh from './DashboardRealtimeRefresh'
 import WeeklyTimeline from '@/components/dashboard/WeeklyTimeline'
 
-const STATUS_COLORS: Record<ProjectStatus, string> = {
-  en_brief: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
-  en_production: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  en_livraison: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-  livre: 'bg-green-500/10 text-green-400 border-green-500/20',
-  archive: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20',
+const STATUS_STYLES: Record<ProjectStatus, { pill: string; dot: string }> = {
+  en_brief:      { pill: 'bg-[#f5c51820] text-[#b8930a] border-[#f5c51840]', dot: '#f5c518' },
+  en_production: { pill: 'bg-[var(--blue-soft)] text-[var(--blue)] border-[#1E5FFF30]', dot: 'var(--blue)' },
+  en_livraison:  { pill: 'bg-[var(--orange-soft)] text-[var(--orange)] border-[#FF4E1C30]', dot: 'var(--orange)' },
+  livre:         { pill: 'bg-[#10b98120] text-[#059669] border-[#10b98130]', dot: '#10b981' },
+  archive:       { pill: 'bg-[var(--chip)] text-[var(--muted-foreground)] border-transparent', dot: '#9ca3af' },
 }
 
-const TASK_PRIORITY_COLORS: Record<string, string> = {
-  urgente: 'text-red-400',
-  haute: 'text-orange-400',
-  normale: 'text-blue-400',
-  basse: 'text-zinc-400',
+const PRIORITY_STYLES: Record<string, { dot: string; bg: string }> = {
+  urgente: { dot: '#ef4444', bg: 'bg-red-50 text-red-600 border-red-200' },
+  haute:   { dot: 'var(--orange)', bg: 'bg-[var(--orange-soft)] text-[var(--orange)] border-[#FF4E1C30]' },
+  normale: { dot: 'var(--blue)', bg: 'bg-[var(--blue-soft)] text-[var(--blue)] border-[#1E5FFF30]' },
+  basse:   { dot: '#9ca3af', bg: 'bg-[var(--chip)] text-[var(--muted-foreground)] border-transparent' },
 }
 
 export default async function DashboardPage() {
@@ -51,12 +49,12 @@ export default async function DashboardPage() {
         .select('id, name, status, deadline, client:users!projects_client_id_fkey(full_name)')
         .neq('status', 'archive')
         .order('updated_at', { ascending: false })
-        .limit(5)
+        .limit(6)
     : supabase
         .from('project_members')
         .select('project:projects!project_members_project_id_fkey(id, name, status, deadline, client:users!projects_client_id_fkey(full_name))')
         .eq('user_id', authUser.id)
-        .limit(5)
+        .limit(6)
 
   const urgentTasksQuery = supabase
     .from('tasks')
@@ -65,7 +63,7 @@ export default async function DashboardPage() {
     .in('priority', ['urgente', 'haute'])
     .neq('status', 'termine')
     .order('due_date', { ascending: true })
-    .limit(5)
+    .limit(6)
 
   const [
     { data: projectsRaw },
@@ -100,184 +98,224 @@ export default async function DashboardPage() {
 
   const firstName = currentUser?.full_name?.split(' ')[0] ?? 'vous'
 
-  const stats = [
+  const kpis = [
     {
       label: isAdmin ? 'Projets actifs' : 'Mes projets',
       value: projects?.length ?? 0,
-      icon: FolderKanban,
-      color: 'text-[var(--primary)]',
+      iconBg: 'var(--blue)',
+      icon: <FolderKanban size={20} color="white" />,
     },
     {
       label: 'Mes tâches en cours',
       value: myTasks?.length ?? 0,
-      icon: CheckSquare,
-      color: 'text-blue-400',
+      iconBg: 'var(--ink)',
+      icon: <CheckSquare size={20} color="white" />,
     },
     {
       label: 'En production',
       value: statusCounts['en_production'] ?? 0,
-      icon: TrendingUp,
-      color: 'text-green-400',
+      iconBg: 'var(--orange)',
+      icon: <TrendingUp size={20} color="white" />,
     },
     {
       label: 'En livraison',
       value: statusCounts['en_livraison'] ?? 0,
-      icon: Clock,
-      color: 'text-purple-400',
+      iconBg: '#10b981',
+      icon: <Clock size={20} color="white" />,
     },
   ]
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Refresh temps réel invisible */}
+    <div className="space-y-6">
       <DashboardRealtimeRefresh userId={authUser.id} />
 
-      <div>
-        <h1 className="text-2xl font-bold text-[var(--foreground)]">
-          Bonjour, {firstName}
-        </h1>
-        <p className="text-sm text-[var(--muted-foreground)] mt-1">
-          {isAdmin ? "Vue d'ensemble de l'activité Innolive" : 'Vos projets et tâches en cours'}
+      {/* Hero greeting */}
+      <div className="mb-2">
+        <p className="text-[11px] text-[var(--muted-foreground)] tracking-widest uppercase mb-2">
+          {isAdmin ? "Vue d'ensemble · Innolive" : 'Mon espace'}
         </p>
+        <h1 className="headline text-[44px] leading-[0.95] uppercase">
+          Bonjour,&nbsp;
+          <span className="highlight-blue">{firstName}</span>
+        </h1>
+        <h2 className="headline text-[44px] leading-[0.95] uppercase mt-1">
+          {projects.length}&nbsp;
+          <span className="highlight-orange">projet{projects.length > 1 ? 's' : ''}</span>
+          &nbsp;actif{projects.length > 1 ? 's' : ''}.
+        </h2>
       </div>
 
-      {/* Stats */}
+      {/* KPI cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map(({ label, value, icon: Icon, color }) => (
-          <Card key={label} className="bg-[var(--card)] border-[var(--border)]">
-            <CardContent className="p-4 flex items-center gap-4">
-              <div className={`p-2 rounded-md bg-[var(--muted)] ${color}`}>
-                <Icon size={18} />
+        {kpis.map(({ label, value, iconBg, icon }) => (
+          <div
+            key={label}
+            className="bg-[var(--card)] rounded-[22px] border border-[var(--border)] p-5 flex flex-col gap-3"
+          >
+            <div className="flex items-center justify-between">
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center"
+                style={{ background: iconBg }}
+              >
+                {icon}
               </div>
-              <div>
-                <p className="text-2xl font-bold text-[var(--foreground)]">{value}</p>
-                <p className="text-xs text-[var(--muted-foreground)]">{label}</p>
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+            <div>
+              <p className="headline text-[34px] leading-none">{value}</p>
+              <p className="text-[13px] text-[var(--muted-foreground)] mt-1">{label}</p>
+            </div>
+          </div>
         ))}
       </div>
 
       {/* Timeline hebdomadaire */}
       <WeeklyTimeline userId={authUser.id} isAdmin={isAdmin} />
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
         {/* Projets récents */}
-        <Card className="bg-[var(--card)] border-[var(--border)]">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold text-[var(--foreground)]">
-                Projets récents
-              </CardTitle>
-              <Link
-                href="/dashboard/projects"
-                className="text-xs text-[var(--primary)] hover:underline"
-              >
-                Voir tout →
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="divide-y divide-[var(--border)]">
-              {recentProjects?.length === 0 && (
-                <p className="text-sm text-[var(--muted-foreground)] p-4">
-                  Aucun projet pour l&apos;instant.
-                </p>
-              )}
-              {recentProjects?.map((project) => (
+        <div className="bg-[var(--card)] rounded-[22px] border border-[var(--border)] overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
+            <h3 className="headline text-[18px] uppercase">
+              Projets <span className="text-[var(--muted-foreground)]">récents</span>
+            </h3>
+            <Link
+              href="/dashboard/projects"
+              className="text-[12px] font-semibold text-[var(--blue)] hover:opacity-70 transition-opacity flex items-center gap-1"
+            >
+              Voir tout →
+            </Link>
+          </div>
+          <div className="divide-y divide-[var(--border)]">
+            {recentProjects?.length === 0 && (
+              <p className="text-[13px] text-[var(--muted-foreground)] p-5">
+                Aucun projet pour l&apos;instant.
+              </p>
+            )}
+            {recentProjects?.map((project) => {
+              const style = STATUS_STYLES[project.status as ProjectStatus]
+              return (
                 <Link
                   key={project.id}
                   href={`/dashboard/projects/${project.id}`}
-                  className="flex items-center justify-between px-4 py-3 hover:bg-[var(--muted)] transition-colors"
+                  className="flex items-center justify-between px-5 py-3.5 hover:bg-[var(--muted)] transition-colors group"
                 >
-                  <div className="flex items-center gap-3">
-                    <FolderKanban size={15} className="text-[var(--muted-foreground)]" />
-                    <div>
-                      <p className="text-sm font-medium text-[var(--foreground)]">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span
+                      className="w-2 h-2 rounded-full shrink-0"
+                      style={{ background: style?.dot ?? '#9ca3af' }}
+                    />
+                    <div className="min-w-0">
+                      <p className="text-[14px] font-semibold text-[var(--foreground)] truncate group-hover:text-[var(--blue)] transition-colors">
                         {project.name}
                       </p>
                       {project.client && (
-                        <p className="text-xs text-[var(--muted-foreground)]">
+                        <p className="text-[12px] text-[var(--muted-foreground)]">
                           {(project.client as unknown as { full_name: string }).full_name}
                         </p>
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 shrink-0">
                     {project.deadline && (
-                      <span className="text-xs text-[var(--muted-foreground)]">
+                      <span className="text-[12px] text-[var(--muted-foreground)]">
                         {formatDate(project.deadline)}
                       </span>
                     )}
-                    <Badge
-                      variant="outline"
-                      className={`text-xs ${STATUS_COLORS[project.status as ProjectStatus]}`}
-                    >
+                    <span className={`pill text-[11px] border ${style?.pill ?? ''}`}>
                       {PROJECT_STATUS_LABELS[project.status as ProjectStatus]}
-                    </Badge>
+                    </span>
                   </div>
                 </Link>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+              )
+            })}
+          </div>
+        </div>
 
         {/* Tâches urgentes */}
-        <Card className="bg-[var(--card)] border-[var(--border)]">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold text-[var(--foreground)] flex items-center gap-2">
-                <AlertCircle size={14} className="text-orange-400" />
-                Tâches prioritaires
-              </CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="divide-y divide-[var(--border)]">
-              {urgentTasks.length === 0 && (
-                <p className="text-sm text-[var(--muted-foreground)] p-4">
-                  Aucune tâche prioritaire en cours.
-                </p>
-              )}
-              {urgentTasks.map((task) => (
+        <div className="bg-[var(--card)] rounded-[22px] border border-[var(--border)] overflow-hidden">
+          <div className="flex items-center gap-2.5 px-5 py-4 border-b border-[var(--border)]">
+            <AlertCircle size={16} style={{ color: 'var(--orange)' }} />
+            <h3 className="headline text-[18px] uppercase">
+              Tâches <span className="text-[var(--muted-foreground)]">prioritaires</span>
+            </h3>
+          </div>
+          <div className="divide-y divide-[var(--border)]">
+            {urgentTasks.length === 0 && (
+              <p className="text-[13px] text-[var(--muted-foreground)] p-5">
+                Aucune tâche prioritaire en cours.
+              </p>
+            )}
+            {urgentTasks.map((task) => {
+              const style = PRIORITY_STYLES[task.priority]
+              return (
                 <Link
                   key={task.id}
                   href={`/dashboard/projects/${task.project_id}/tasks`}
-                  className="flex items-center justify-between px-4 py-3 hover:bg-[var(--muted)] transition-colors"
+                  className="flex items-center justify-between px-5 py-3.5 hover:bg-[var(--muted)] transition-colors group"
                 >
-                  <div className="flex items-center gap-3">
-                    <CheckSquare size={15} className={TASK_PRIORITY_COLORS[task.priority] ?? 'text-[var(--muted-foreground)]'} />
-                    <div>
-                      <p className="text-sm font-medium text-[var(--foreground)]">{task.title}</p>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span
+                      className="w-2 h-2 rounded-full shrink-0"
+                      style={{ background: style?.dot ?? '#9ca3af' }}
+                    />
+                    <div className="min-w-0">
+                      <p className="text-[14px] font-semibold text-[var(--foreground)] truncate">
+                        {task.title}
+                      </p>
                       {task.project && (
-                        <p className="text-xs text-[var(--muted-foreground)]">
+                        <p className="text-[12px] text-[var(--muted-foreground)]">
                           {(task.project as unknown as { name: string }).name}
                         </p>
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3 shrink-0">
                     {task.due_date && (
-                      <span className="text-xs text-[var(--muted-foreground)]">
+                      <span className="text-[12px] text-[var(--muted-foreground)]">
                         {formatDate(task.due_date)}
                       </span>
                     )}
-                    <Badge
-                      variant="outline"
-                      className={`text-xs capitalize ${
-                        task.priority === 'urgente'
-                          ? 'bg-red-500/10 text-red-400 border-red-500/20'
-                          : 'bg-orange-500/10 text-orange-400 border-orange-500/20'
-                      }`}
-                    >
+                    <span className={`pill text-[11px] border capitalize ${style?.bg ?? ''}`}>
                       {task.priority}
-                    </Badge>
+                    </span>
                   </div>
                 </Link>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Bandeau performance style Innolive */}
+      <div
+        className="rounded-[22px] px-7 py-7 relative overflow-hidden"
+        style={{ background: 'var(--ink)', color: 'white' }}
+      >
+        <div className="relative z-10 flex items-center gap-8">
+          <div className="flex-1">
+            <p className="text-[11px] tracking-widest uppercase opacity-50 mb-2">Innolive · Agence</p>
+            <h2 className="headline text-[28px] leading-tight">
+              Gérez vos projets avec{' '}
+              <span className="highlight-blue">précision</span>
+              <span className="opacity-50"> & </span>
+              <span className="highlight-orange">impact</span>.
+            </h2>
+          </div>
+          <Link
+            href="/dashboard/projects"
+            className="shrink-0 px-5 py-3 rounded-full bg-white text-[var(--ink)] font-bold text-[13px] hover:opacity-90 transition-opacity"
+          >
+            Voir les projets →
+          </Link>
+        </div>
+
+        {/* Ghost word */}
+        <div
+          className="ghost-word absolute right-0 top-1/2 -translate-y-1/2 text-[120px] select-none pointer-events-none"
+          style={{ WebkitTextStroke: '1px rgba(255,255,255,0.05)', color: 'transparent' }}
+        >
+          INNOLIVE
+        </div>
       </div>
     </div>
   )
