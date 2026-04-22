@@ -74,7 +74,7 @@ export interface ProjectMember {
 
 export interface Task {
   id: string
-  project_id: string
+  project_id: string | null
   title: string
   description: string | null
   status: TaskStatus
@@ -82,6 +82,7 @@ export interface Task {
   assignee_id: string | null
   due_date: string | null
   position: number
+  tags?: string[] | null
   created_at: string
   updated_at: string
   // relations jointes

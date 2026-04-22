@@ -186,10 +186,10 @@ export default function ClientCRM({ clients: initialClients, kpis: initialKpis }
             </button>
           ))}
         </div>
-        <Button onClick={() => setShowDrawer(true)} className="ml-auto bg-[var(--ink)] hover:opacity-90 text-white rounded-full px-5 text-[13px]">
-          <Plus size={14} className="mr-1.5" />
+        <button onClick={() => setShowDrawer(true)} className="ml-auto flex items-center gap-1.5 px-5 py-2 rounded-full bg-[var(--ink)] hover:opacity-90 text-white text-[13px] font-semibold shrink-0 transition-transform hover:-translate-y-px">
+          <Plus size={14} />
           Nouveau client
-        </Button>
+        </button>
       </div>
 
       {/* Table */}

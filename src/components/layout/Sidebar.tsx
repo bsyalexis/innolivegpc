@@ -11,6 +11,7 @@ import {
   Users,
   Plus,
   Calendar,
+  ListTodo,
 } from 'lucide-react'
 import { cn, getInitials } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -46,6 +47,7 @@ export default function Sidebar({ user, unreadCount = 0 }: SidebarProps) {
   const navItems: NavItem[] = [
     { href: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
     { href: '/dashboard/projects', label: 'Projets', icon: FolderKanban },
+    { href: '/dashboard/tasks', label: 'Tâches', icon: ListTodo },
     { href: '/dashboard/clients', label: 'Clients', icon: Users, adminOnly: true },
     { href: '/dashboard/notifications', label: 'Notifications', icon: Bell, badge: unreadCount || null },
     { href: '/dashboard/settings', label: 'Paramètres', icon: Settings },
