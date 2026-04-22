@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { PROJECT_STATUS_LABELS, type ProjectStatus } from '@/types'
 import { formatDate } from '@/lib/utils'
 import Link from 'next/link'
-import { FolderKanban, CheckSquare, Clock, TrendingUp, AlertCircle } from 'lucide-react'
+import { FolderKanban, CheckSquare, Clock, TrendingUp, AlertCircle, DollarSign, Target, Activity } from 'lucide-react'
 import DashboardRealtimeRefresh from './DashboardRealtimeRefresh'
 import WeeklyTimeline from '@/components/dashboard/WeeklyTimeline'
 
@@ -37,22 +37,22 @@ export default async function DashboardPage() {
   const isAdmin = currentUser?.role === 'ADMIN'
 
   const projectsQuery = isAdmin
-    ? supabase.from('projects').select('id, status').neq('status', 'archive')
+    ? supabase.from('projects').select('id, status, budget, deadline').neq('status', 'archive')
     : supabase
         .from('project_members')
-        .select('project:projects!project_members_project_id_fkey(id, status)')
+        .select('project:projects!project_members_project_id_fkey(id, status, budget, deadline)')
         .eq('user_id', authUser.id)
 
   const recentQuery = isAdmin
     ? supabase
         .from('projects')
-        .select('id, name, status, deadline, client:users!projects_client_id_fkey(full_name)')
+        .select('id, name, status, deadline, color, code, client:users!projects_client_id_fkey(full_name)')
         .neq('status', 'archive')
         .order('updated_at', { ascending: false })
         .limit(6)
     : supabase
         .from('project_members')
-        .select('project:projects!project_members_project_id_fkey(id, name, status, deadline, client:users!projects_client_id_fkey(full_name))')
+        .select('project:projects!project_members_project_id_fkey(id, name, status, deadline, color, code, client:users!projects_client_id_fkey(full_name))')
         .eq('user_id', authUser.id)
         .limit(6)
 
@@ -65,21 +65,33 @@ export default async function DashboardPage() {
     .order('due_date', { ascending: true })
     .limit(6)
 
+  // Flux activité : derniers messages/livraisons créés (ADMIN)
+  const activityQuery = isAdmin
+    ? supabase
+        .from('messages')
+        .select('id, content, created_at, thread_type, author:users!messages_author_id_fkey(full_name), project:projects!messages_project_id_fkey(name)')
+        .order('created_at', { ascending: false })
+        .limit(5)
+    : Promise.resolve({ data: [] })
+
   const [
     { data: projectsRaw },
     { data: myTasks },
     { data: recentRaw },
     { data: urgentTasksRaw },
+    { data: activityRaw },
   ] = await Promise.all([
     projectsQuery,
     supabase.from('tasks').select('id, status').eq('assignee_id', authUser.id).neq('status', 'termine'),
     recentQuery,
     urgentTasksQuery,
+    activityQuery,
   ])
 
-  type ProjectRow = { id: string; status: string }
-  type RecentRow = { id: string; name: string; status: string; deadline?: string | null; client?: { full_name: string } | null }
+  type ProjectRow = { id: string; status: string; budget?: number | null; deadline?: string | null }
+  type RecentRow = { id: string; name: string; status: string; deadline?: string | null; color?: string | null; code?: string | null; client?: { full_name: string } | null }
   type UrgentTask = { id: string; title: string; priority: string; due_date: string | null; project_id: string; project?: { name: string } | null }
+  type ActivityItem = { id: string; content: string; created_at: string; thread_type: string; author?: { full_name: string } | null; project?: { name: string } | null }
 
   const projects: ProjectRow[] = isAdmin
     ? (projectsRaw as ProjectRow[] | null) ?? []
@@ -90,13 +102,34 @@ export default async function DashboardPage() {
     : ((recentRaw as { project: RecentRow }[] | null) ?? []).map((r) => r.project)
 
   const urgentTasks: UrgentTask[] = (urgentTasksRaw as UrgentTask[] | null) ?? []
+  const activity: ActivityItem[] = (activityRaw as ActivityItem[] | null) ?? []
 
   const statusCounts = (projects || []).reduce((acc, p) => {
     acc[p.status as ProjectStatus] = (acc[p.status as ProjectStatus] || 0) + 1
     return acc
   }, {} as Record<ProjectStatus, number>)
 
+  // CA en production
+  const caProduction = projects
+    .filter((p) => p.status === 'en_production')
+    .reduce((acc, p) => acc + (p.budget ?? 0), 0)
+
+  // Taux deadlines respectées (projets livrés avec deadline)
+  const { data: livresRaw } = await supabase
+    .from('projects')
+    .select('deadline, updated_at')
+    .eq('status', 'livre')
+    .not('deadline', 'is', null)
+    .limit(50)
+
+  const livres = livresRaw ?? []
+  const onTime = livres.filter((p) => new Date(p.updated_at) <= new Date(p.deadline)).length
+  const tauxDeadlines = livres.length > 0 ? Math.round((onTime / livres.length) * 100) : null
+
   const firstName = currentUser?.full_name?.split(' ')[0] ?? 'vous'
+
+  const fmtEur = (n: number) =>
+    n >= 1000 ? `${(n / 1000).toFixed(0)}k€` : `${n}€`
 
   const kpis = [
     {
@@ -112,16 +145,16 @@ export default async function DashboardPage() {
       icon: <CheckSquare size={20} color="white" />,
     },
     {
-      label: 'En production',
-      value: statusCounts['en_production'] ?? 0,
+      label: isAdmin && caProduction > 0 ? 'CA en production' : 'En production',
+      value: isAdmin && caProduction > 0 ? fmtEur(caProduction) : (statusCounts['en_production'] ?? 0),
       iconBg: 'var(--orange)',
-      icon: <TrendingUp size={20} color="white" />,
+      icon: isAdmin && caProduction > 0 ? <DollarSign size={20} color="white" /> : <TrendingUp size={20} color="white" />,
     },
     {
-      label: 'En livraison',
-      value: statusCounts['en_livraison'] ?? 0,
+      label: isAdmin && tauxDeadlines !== null ? 'Taux deadlines' : 'En livraison',
+      value: isAdmin && tauxDeadlines !== null ? `${tauxDeadlines}%` : (statusCounts['en_livraison'] ?? 0),
       iconBg: '#10b981',
-      icon: <Clock size={20} color="white" />,
+      icon: isAdmin && tauxDeadlines !== null ? <Target size={20} color="white" /> : <Clock size={20} color="white" />,
     },
   ]
 
@@ -285,6 +318,41 @@ export default async function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Flux activité équipe (ADMIN only) */}
+      {isAdmin && activity.length > 0 && (
+        <div className="bg-[var(--card)] rounded-[22px] border border-[var(--border)] overflow-hidden">
+          <div className="flex items-center gap-2.5 px-5 py-4 border-b border-[var(--border)]">
+            <Activity size={16} style={{ color: 'var(--blue)' }} />
+            <h3 className="headline text-[18px] uppercase">
+              Activité <span className="text-[var(--muted-foreground)]">équipe</span>
+            </h3>
+          </div>
+          <div className="divide-y divide-[var(--border)]">
+            {activity.map((item) => {
+              const author = (item.author as unknown as { full_name: string } | null)?.full_name ?? '—'
+              const project = (item.project as unknown as { name: string } | null)?.name
+              return (
+                <div key={item.id} className="flex items-start gap-3 px-5 py-3.5">
+                  <div className="w-7 h-7 rounded-full bg-[var(--blue)] flex items-center justify-center text-white text-[10px] font-bold shrink-0 mt-0.5">
+                    {author.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[13px] font-semibold">{author}</p>
+                      <span className="text-[11px] text-[var(--muted-foreground)] shrink-0">
+                        {new Date(item.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                      </span>
+                    </div>
+                    <p className="text-[12px] text-[var(--muted-foreground)] truncate">{item.content}</p>
+                    {project && <p className="text-[11px] text-[var(--blue)] mt-0.5">{project}</p>}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Bandeau performance style Innolive */}
       <div

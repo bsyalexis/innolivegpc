@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import ClientManager from '@/components/clients/ClientManager'
+import ClientCRM from '@/components/clients/ClientCRM'
 
 export default async function ClientsPage() {
   const supabase = await createClient()
@@ -16,43 +16,66 @@ export default async function ClientsPage() {
 
   if (currentUser?.role !== 'ADMIN') redirect('/dashboard')
 
-  // Récupère tous les clients avec le nombre de projets associés
   const { data: clients } = await supabase
     .from('users')
-    .select('*')
+    .select('id, email, full_name, created_at, avatar_url, sector, city, mrr, portal_enabled, contact_email, contact_phone')
     .eq('role', 'CLIENT')
     .order('created_at', { ascending: false })
 
-  // Compte les projets par client
   const clientIds = (clients ?? []).map((c) => c.id)
-  const { data: projectCounts } = clientIds.length > 0
+
+  const { data: projectsRaw } = clientIds.length > 0
     ? await supabase
         .from('projects')
-        .select('client_id')
+        .select('client_id, id, name, code, status, budget')
         .in('client_id', clientIds)
         .neq('status', 'archive')
     : { data: [] }
 
-  const countMap: Record<string, number> = {}
-  for (const p of projectCounts ?? []) {
-    if (p.client_id) countMap[p.client_id] = (countMap[p.client_id] ?? 0) + 1
+  // Agréger par client
+  type ProjectInfo = { id: string; name: string; code?: string | null; status: string; budget?: number | null }
+  const projectsByClient: Record<string, ProjectInfo[]> = {}
+  let totalMRR = 0
+  let totalBudget = 0
+
+  for (const p of projectsRaw ?? []) {
+    if (!p.client_id) continue
+    if (!projectsByClient[p.client_id]) projectsByClient[p.client_id] = []
+    projectsByClient[p.client_id].push(p)
+    if (p.budget) totalBudget += p.budget
   }
 
-  const clientsWithCount = (clients ?? []).map((c) => ({
+  for (const c of clients ?? []) {
+    if (c.mrr) totalMRR += Number(c.mrr)
+  }
+
+  const enrichedClients = (clients ?? []).map((c) => ({
     ...c,
-    projectCount: countMap[c.id] ?? 0,
+    projects: projectsByClient[c.id] ?? [],
+    projectCount: (projectsByClient[c.id] ?? []).length,
   }))
 
+  const portalCount = (clients ?? []).filter((c) => c.portal_enabled).length
+  const activeCount = enrichedClients.filter((c) => c.projectCount > 0).length
+
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
+      {/* Hero */}
       <div>
-        <h1 className="text-2xl font-bold text-[var(--foreground)]">Gestion des clients</h1>
-        <p className="text-sm text-[var(--muted-foreground)] mt-1">
-          Créez et gérez les accès clients au portail.
+        <p className="text-[11px] text-[var(--muted-foreground)] tracking-widest uppercase mb-2">
+          CRM · Base clients
         </p>
+        <h1 className="headline text-[44px] leading-[0.95] uppercase">
+          Nos&nbsp;<span className="highlight-blue">Clients</span>
+          <span className="text-[var(--muted-foreground)]">&nbsp;&amp;&nbsp;</span>
+          <span className="highlight-orange">Partenaires</span>
+        </h1>
       </div>
 
-      <ClientManager clients={clientsWithCount} />
+      <ClientCRM
+        clients={enrichedClients}
+        kpis={{ total: clients?.length ?? 0, active: activeCount, mrr: totalMRR, portal: portalCount, budget: totalBudget }}
+      />
     </div>
   )
 }

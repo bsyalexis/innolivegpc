@@ -1,5 +1,7 @@
 export type UserRole = 'ADMIN' | 'TEAM' | 'CLIENT'
 
+export type ProjectCategory = 'creation' | 'publicite' | 'communication' | 'acquisition'
+
 export type ProjectStatus =
   | 'en_brief'
   | 'en_production'
@@ -32,6 +34,13 @@ export interface User {
   role: UserRole
   avatar_url: string | null
   created_at: string
+  // champs client
+  sector?: string | null
+  city?: string | null
+  mrr?: number | null
+  portal_enabled?: boolean
+  contact_email?: string | null
+  contact_phone?: string | null
 }
 
 export interface Project {
@@ -44,6 +53,14 @@ export interface Project {
   created_by: string
   created_at: string
   updated_at: string
+  // nouveaux champs
+  category?: ProjectCategory | null
+  color?: string | null
+  code?: string | null
+  budget?: number | null
+  progress?: number | null
+  tags?: string[] | null
+  lead_id?: string | null
   // relations jointes
   client?: User
   members?: User[]
@@ -176,4 +193,18 @@ export const DELIVERY_STATUS_LABELS: Record<DeliveryStatus, string> = {
   en_attente: 'En attente',
   valide: 'Validé',
   revision_demandee: 'Révision demandée',
+}
+
+export const PROJECT_CATEGORY_LABELS: Record<ProjectCategory, string> = {
+  creation: 'Création',
+  publicite: 'Publicité',
+  communication: 'Communication',
+  acquisition: 'Acquisition',
+}
+
+export const PROJECT_CATEGORY_COLORS: Record<ProjectCategory, string> = {
+  creation: 'var(--blue)',
+  publicite: 'var(--orange)',
+  communication: '#10b981',
+  acquisition: '#8b5cf6',
 }
