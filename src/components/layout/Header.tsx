@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { User } from '@/types'
 import { getInitials } from '@/lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -14,6 +15,7 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Bell, Plus } from 'lucide-react'
+import SearchPalette from './SearchPalette'
 
 const ROLE_LABELS = {
   ADMIN: 'Administrateur',
@@ -30,6 +32,7 @@ interface HeaderProps {
 export default function Header({ user, title, subtitle }: HeaderProps) {
   const router = useRouter()
   const supabase = createClient()
+  const [searchOpen, setSearchOpen] = useState(false)
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -37,7 +40,21 @@ export default function Header({ user, title, subtitle }: HeaderProps) {
     router.refresh()
   }
 
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setSearchOpen(true)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   return (
+    <>
+      <SearchPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
+
     <header
       className="bg-[var(--card)] border border-[var(--border)] rounded-full flex items-center gap-4 px-3 py-2 mb-6"
       style={{ boxShadow: '0 10px 40px rgba(10,10,10,0.06), 0 2px 6px rgba(10,10,10,0.04)' }}
@@ -54,18 +71,21 @@ export default function Header({ user, title, subtitle }: HeaderProps) {
         </h1>
       </div>
 
-      {/* Search */}
-      <div className="flex items-center gap-2 bg-[var(--muted)] px-4 py-2 rounded-full min-w-[220px]">
+      {/* Search trigger */}
+      <button
+        onClick={() => setSearchOpen(true)}
+        className="flex items-center gap-2 bg-[var(--muted)] hover:bg-[var(--chip)] px-4 py-2 rounded-full min-w-[220px] transition-colors"
+      >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-[var(--muted-foreground)] shrink-0">
           <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
         </svg>
-        <span className="text-[13px] text-[var(--muted-foreground)] flex-1 select-none">
+        <span className="text-[13px] text-[var(--muted-foreground)] flex-1 text-left select-none">
           Rechercher…
         </span>
         <kbd className="text-[10px] text-[var(--muted-foreground)] bg-[var(--card)] px-1.5 py-0.5 rounded font-semibold">
           ⌘K
         </kbd>
-      </div>
+      </button>
 
       {/* Notification bell */}
       <button className="w-10 h-10 rounded-full bg-[var(--muted)] flex items-center justify-center relative hover:bg-[var(--chip)] transition-colors">
@@ -116,5 +136,6 @@ export default function Header({ user, title, subtitle }: HeaderProps) {
         Nouveau
       </button>
     </header>
+    </>
   )
 }
