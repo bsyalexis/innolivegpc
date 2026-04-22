@@ -6,11 +6,8 @@ import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import {
   Plus, Loader2, Search, Users, TrendingUp, Globe, Briefcase,
-  ChevronRight, X, Building2, MapPin, Mail, Phone, ToggleLeft, ToggleRight,
+  ChevronRight, Building2, MapPin, Mail, Phone, ToggleLeft, ToggleRight,
 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { getInitials } from '@/lib/utils'
 
@@ -285,95 +282,135 @@ export default function ClientCRM({ clients: initialClients, kpis: initialKpis }
       </div>
 
       {/* Drawer création */}
-      <Sheet open={showDrawer} onOpenChange={setShowDrawer}>
-        <SheetContent className="bg-[var(--card)] border-l border-[var(--border)] text-[var(--foreground)] overflow-y-auto w-full sm:w-[480px]">
-          <SheetHeader className="mb-6">
-            <SheetTitle className="headline text-[22px] uppercase">Nouveau client</SheetTitle>
-          </SheetHeader>
+      <Sheet open={showDrawer} onOpenChange={(open) => { if (!open) resetForm(); setShowDrawer(open) }}>
+        <SheetContent className="bg-[var(--background)] border-l border-[var(--border)] text-[var(--foreground)] flex flex-col p-0 w-full sm:w-[460px] gap-0">
 
-          <div className="space-y-4">
+          {/* En-tête fixe */}
+          <div className="px-6 pt-6 pb-4 border-b border-[var(--border)] shrink-0">
+            <SheetHeader>
+              <SheetTitle className="headline text-[24px] uppercase tracking-tight">Nouveau client</SheetTitle>
+            </SheetHeader>
+            <p className="text-[12px] text-[var(--muted-foreground)] mt-1">Créez un accès client et renseignez son profil.</p>
+          </div>
+
+          {/* Corps scrollable */}
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+
             {/* Identité */}
-            <div className="space-y-1">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]">Identité</p>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5 col-span-2">
-                <Label className="text-[12px]">Nom complet *</Label>
-                <Input value={form.full_name} onChange={(e) => f('full_name', e.target.value)} placeholder="Prénom Nom" className="bg-[var(--input)] border-[var(--border)]" />
+            <section className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-3.5 rounded-full bg-[var(--blue)]" />
+                <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]">Identité</p>
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-[12px]">Email *</Label>
-                <Input type="email" value={form.email} onChange={(e) => f('email', e.target.value)} placeholder="client@exemple.fr" className="bg-[var(--input)] border-[var(--border)]" />
+              <div className="space-y-2.5">
+                <div className="space-y-1.5">
+                  <label className="text-[12px] font-medium text-[var(--foreground)]">Nom complet <span className="text-[var(--orange)]">*</span></label>
+                  <input
+                    value={form.full_name}
+                    onChange={(e) => f('full_name', e.target.value)}
+                    placeholder="Prénom Nom"
+                    className="w-full px-3.5 py-2.5 text-[13px] rounded-xl bg-[var(--card)] border border-[var(--border)] focus:outline-none focus:border-[var(--blue)] focus:ring-2 focus:ring-[#1E5FFF20] transition-all placeholder:text-[var(--muted-foreground)]"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="space-y-1.5">
+                    <label className="text-[12px] font-medium text-[var(--foreground)]">Email <span className="text-[var(--orange)]">*</span></label>
+                    <input
+                      type="email"
+                      value={form.email}
+                      onChange={(e) => f('email', e.target.value)}
+                      placeholder="client@exemple.fr"
+                      className="w-full px-3.5 py-2.5 text-[13px] rounded-xl bg-[var(--card)] border border-[var(--border)] focus:outline-none focus:border-[var(--blue)] focus:ring-2 focus:ring-[#1E5FFF20] transition-all placeholder:text-[var(--muted-foreground)]"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[12px] font-medium text-[var(--foreground)]">Mot de passe <span className="text-[var(--orange)]">*</span></label>
+                    <input
+                      type="password"
+                      value={form.password}
+                      onChange={(e) => f('password', e.target.value)}
+                      placeholder="Min. 8 caractères"
+                      className="w-full px-3.5 py-2.5 text-[13px] rounded-xl bg-[var(--card)] border border-[var(--border)] focus:outline-none focus:border-[var(--blue)] focus:ring-2 focus:ring-[#1E5FFF20] transition-all placeholder:text-[var(--muted-foreground)]"
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-[12px]">Mot de passe provisoire *</Label>
-                <Input type="password" value={form.password} onChange={(e) => f('password', e.target.value)} placeholder="Min. 8 caractères" className="bg-[var(--input)] border-[var(--border)]" />
-              </div>
-            </div>
+            </section>
 
-            {/* Profil */}
-            <div className="space-y-1 pt-2">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]">Profil entreprise</p>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-[12px]">Secteur</Label>
-                <Input value={form.sector} onChange={(e) => f('sector', e.target.value)} placeholder="Tech, Luxe, Retail..." className="bg-[var(--input)] border-[var(--border)]" />
+            {/* Profil entreprise */}
+            <section className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-3.5 rounded-full bg-[var(--orange)]" />
+                <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]">Profil entreprise</p>
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-[12px]">Ville</Label>
-                <Input value={form.city} onChange={(e) => f('city', e.target.value)} placeholder="Paris" className="bg-[var(--input)] border-[var(--border)]" />
+              <div className="grid grid-cols-2 gap-2.5">
+                {[
+                  { key: 'sector' as const, label: 'Secteur', placeholder: 'Tech, Luxe, Retail...' },
+                  { key: 'city' as const, label: 'Ville', placeholder: 'Paris' },
+                  { key: 'contact_email' as const, label: 'Contact email', placeholder: 'contact@société.fr' },
+                  { key: 'contact_phone' as const, label: 'Téléphone', placeholder: '+33 6 XX XX XX XX' },
+                ].map(({ key, label, placeholder }) => (
+                  <div key={key} className="space-y-1.5">
+                    <label className="text-[12px] font-medium text-[var(--foreground)]">{label}</label>
+                    <input
+                      value={form[key] as string}
+                      onChange={(e) => f(key, e.target.value)}
+                      placeholder={placeholder}
+                      className="w-full px-3.5 py-2.5 text-[13px] rounded-xl bg-[var(--card)] border border-[var(--border)] focus:outline-none focus:border-[var(--blue)] focus:ring-2 focus:ring-[#1E5FFF20] transition-all placeholder:text-[var(--muted-foreground)]"
+                    />
+                  </div>
+                ))}
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-[12px]">Contact email</Label>
-                <Input value={form.contact_email} onChange={(e) => f('contact_email', e.target.value)} placeholder="contact@société.fr" className="bg-[var(--input)] border-[var(--border)]" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-[12px]">Téléphone</Label>
-                <Input value={form.contact_phone} onChange={(e) => f('contact_phone', e.target.value)} placeholder="+33 6 XX XX XX XX" className="bg-[var(--input)] border-[var(--border)]" />
-              </div>
-            </div>
+            </section>
 
-            {/* Financier */}
-            <div className="space-y-1 pt-2">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]">Financier & portail</p>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-[12px]">MRR mensuel (€)</Label>
-                <Input type="number" min="0" value={form.mrr} onChange={(e) => f('mrr', e.target.value)} placeholder="500" className="bg-[var(--input)] border-[var(--border)]" />
+            {/* Financier & portail */}
+            <section className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-3.5 rounded-full bg-[#10b981]" />
+                <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]">Financier & portail</p>
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-[12px]">Portail client</Label>
-                <button
-                  type="button"
-                  onClick={() => f('portal_enabled', !form.portal_enabled)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg border text-[13px] font-medium transition-colors w-full"
-                  style={{
-                    background: form.portal_enabled ? '#10b98115' : 'var(--input)',
-                    borderColor: form.portal_enabled ? '#10b981' : 'var(--border)',
-                    color: form.portal_enabled ? '#059669' : 'var(--muted-foreground)',
-                  }}
-                >
-                  {form.portal_enabled ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
-                  {form.portal_enabled ? 'Activé' : 'Désactivé'}
-                </button>
+              <div className="grid grid-cols-2 gap-2.5">
+                <div className="space-y-1.5">
+                  <label className="text-[12px] font-medium text-[var(--foreground)]">MRR mensuel (€)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={form.mrr}
+                    onChange={(e) => f('mrr', e.target.value)}
+                    placeholder="500"
+                    className="w-full px-3.5 py-2.5 text-[13px] rounded-xl bg-[var(--card)] border border-[var(--border)] focus:outline-none focus:border-[var(--blue)] focus:ring-2 focus:ring-[#1E5FFF20] transition-all placeholder:text-[var(--muted-foreground)]"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[12px] font-medium text-[var(--foreground)]">Portail client</label>
+                  <button
+                    type="button"
+                    onClick={() => f('portal_enabled', !form.portal_enabled)}
+                    className="flex items-center gap-2 w-full px-3.5 py-2.5 rounded-xl border text-[13px] font-medium transition-all"
+                    style={{
+                      background: form.portal_enabled ? '#10b98112' : 'var(--card)',
+                      borderColor: form.portal_enabled ? '#10b98160' : 'var(--border)',
+                      color: form.portal_enabled ? '#059669' : 'var(--muted-foreground)',
+                    }}
+                  >
+                    {form.portal_enabled ? <ToggleRight size={17} /> : <ToggleLeft size={17} />}
+                    {form.portal_enabled ? 'Activé' : 'Désactivé'}
+                  </button>
+                </div>
               </div>
-            </div>
+            </section>
+          </div>
 
-            {/* Actions */}
-            <div className="flex gap-3 pt-4 border-t border-[var(--border)]">
-              <Button
-                onClick={handleCreate}
-                disabled={loading || !form.full_name.trim() || !form.email.trim() || !form.password.trim()}
-                className="flex-1 bg-[var(--ink)] hover:opacity-90 text-white rounded-full"
-              >
-                {loading ? <><Loader2 size={14} className="animate-spin mr-2" />Création...</> : 'Créer le client'}
-              </Button>
-              <Button variant="outline" onClick={() => { resetForm(); setShowDrawer(false) }} className="border-[var(--border)] text-[var(--muted-foreground)] rounded-full">
-                <X size={14} />
-              </Button>
-            </div>
+          {/* Pied fixe */}
+          <div className="px-6 py-4 border-t border-[var(--border)] shrink-0">
+            <button
+              onClick={handleCreate}
+              disabled={loading || !form.full_name.trim() || !form.email.trim() || !form.password.trim()}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-full text-[13px] font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ background: 'var(--ink)', color: 'white' }}
+            >
+              {loading ? <><Loader2 size={14} className="animate-spin" />Création en cours...</> : <><Plus size={14} />Créer le client</>}
+            </button>
           </div>
         </SheetContent>
       </Sheet>
