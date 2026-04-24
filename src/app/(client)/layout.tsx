@@ -23,10 +23,16 @@ export default async function ClientLayout({
     redirect('/dashboard')
   }
 
+  const { count: unreadCount } = await supabase
+    .from('notifications')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', authUser.id)
+    .eq('read', false)
+
   return (
     <div className="min-h-screen bg-[var(--background)]">
-      <ClientNav user={user} />
-      <main className="max-w-4xl mx-auto px-4 py-8">
+      <ClientNav user={user} unreadCount={unreadCount ?? 0} />
+      <main className="max-w-5xl mx-auto px-4 py-8">
         {children}
       </main>
       <Toaster richColors position="bottom-right" />

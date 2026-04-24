@@ -5,6 +5,7 @@ import { formatDate, getInitials } from '@/lib/utils'
 import { ArrowLeft, Building2, MapPin, Mail, Phone, Globe, Calendar, FolderKanban, TrendingUp, DollarSign } from 'lucide-react'
 import { PROJECT_STATUS_LABELS, type ProjectStatus } from '@/types'
 import ClientPortalWidget from '@/components/clients/ClientPortalWidget'
+import ClientDetailActions from '@/components/clients/ClientDetailActions'
 
 const STATUS_STYLES: Record<ProjectStatus, { pill: string; dot: string }> = {
   en_brief:      { pill: 'bg-[#f5c51820] text-[#b8930a] border-[#f5c51840]',              dot: '#f5c518' },
@@ -33,7 +34,7 @@ export default async function ClientDetailPage({
 
   const { data: client } = await supabase
     .from('users')
-    .select('id, email, full_name, created_at, sector, city, mrr, portal_enabled, contact_email, contact_phone, avatar_url')
+    .select('id, email, full_name, role, created_at, sector, city, mrr, portal_enabled, contact_email, contact_phone, avatar_url')
     .eq('id', id)
     .eq('role', 'CLIENT')
     .single()
@@ -67,9 +68,12 @@ export default async function ClientDetailPage({
   return (
     <div className="space-y-6 max-w-5xl">
       {/* Nav */}
-      <Link href="/dashboard/clients" className="flex items-center gap-1.5 text-[13px] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors">
-        <ArrowLeft size={14} /> Base clients
-      </Link>
+      <div className="flex items-center justify-between">
+        <Link href="/dashboard/clients" className="flex items-center gap-1.5 text-[13px] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors">
+          <ArrowLeft size={14} /> Base clients
+        </Link>
+        <ClientDetailActions client={client} />
+      </div>
 
       {/* Header */}
       <div

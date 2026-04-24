@@ -38,6 +38,39 @@ async function getAdminContext() {
   return { error: null, status: null, supabase, admin }
 }
 
+// GET — récupère un utilisateur par son id (pour le drawer)
+export async function GET(request: Request) {
+  const ctx = await getAdminContext()
+  if (ctx.error) return NextResponse.json({ error: ctx.error }, { status: ctx.status })
+
+  const { searchParams } = new URL(request.url)
+  const id = searchParams.get('id')
+  if (!id) return NextResponse.json({ error: 'ID manquant' }, { status: 400 })
+
+  const { data: profile, error } = await ctx.supabase!
+    .from('users')
+    .select('*')
+    .eq('id', id)
+    .single()
+
+  if (error || !profile) return NextResponse.json({ error: 'Utilisateur introuvable' }, { status: 404 })
+
+  // On récupère aussi les auth metadata via admin (last_sign_in, email confirmé)
+  const { data: authData } = await ctx.admin!.auth.admin.getUserById(id)
+
+  return NextResponse.json({
+    ...profile,
+    auth: authData?.user
+      ? {
+          email_confirmed: authData.user.email_confirmed_at !== null,
+          last_sign_in: authData.user.last_sign_in_at,
+          created_at: authData.user.created_at,
+        }
+      : null,
+  })
+}
+
+// POST — créer un nouvel utilisateur
 export async function POST(request: Request) {
   const ctx = await getAdminContext()
   if (ctx.error) return NextResponse.json({ error: ctx.error }, { status: ctx.status })
@@ -71,48 +104,82 @@ export async function POST(request: Request) {
   return NextResponse.json({ user: profile })
 }
 
+// PATCH — modifier un utilisateur (profil + connexion)
 export async function PATCH(request: Request) {
   const ctx = await getAdminContext()
   if (ctx.error) return NextResponse.json({ error: ctx.error }, { status: ctx.status })
 
-  const { id, full_name, role } = await request.json()
+  const body = await request.json()
+  const {
+    id,
+    // Champs Auth
+    email,
+    password,
+    // Champs profil public.users
+    full_name,
+    role,
+    sector,
+    city,
+    contact_email,
+    contact_phone,
+    mrr,
+    portal_enabled,
+    avatar_url,
+  } = body
 
-  if (!id) {
-    return NextResponse.json({ error: 'ID manquant' }, { status: 400 })
+  if (!id) return NextResponse.json({ error: 'ID manquant' }, { status: 400 })
+
+  // 1. Mise à jour auth (email + password via admin API)
+  const authUpdates: Record<string, unknown> = {}
+  const authMeta: Record<string, unknown> = {}
+
+  if (email) authUpdates.email = email
+  if (password) authUpdates.password = password
+  if (full_name) authMeta.full_name = full_name
+  if (role) authMeta.role = role
+
+  if (Object.keys(authUpdates).length > 0 || Object.keys(authMeta).length > 0) {
+    const { error: authError } = await ctx.admin!.auth.admin.updateUserById(id, {
+      ...authUpdates,
+      user_metadata: authMeta,
+    })
+    if (authError) {
+      return NextResponse.json({ error: authError.message }, { status: 500 })
+    }
   }
 
-  const updates: Record<string, string> = {}
-  if (full_name) updates.full_name = full_name
-  if (role) updates.role = role
+  // 2. Mise à jour public.users
+  const profileUpdates: Record<string, unknown> = {}
+  if (full_name !== undefined) profileUpdates.full_name = full_name
+  if (role !== undefined) profileUpdates.role = role
+  if (email !== undefined) profileUpdates.email = email
+  if (sector !== undefined) profileUpdates.sector = sector || null
+  if (city !== undefined) profileUpdates.city = city || null
+  if (contact_email !== undefined) profileUpdates.contact_email = contact_email || null
+  if (contact_phone !== undefined) profileUpdates.contact_phone = contact_phone || null
+  if (mrr !== undefined) profileUpdates.mrr = mrr === '' ? null : parseFloat(String(mrr))
+  if (portal_enabled !== undefined) profileUpdates.portal_enabled = portal_enabled
+  if (avatar_url !== undefined) profileUpdates.avatar_url = avatar_url || null
 
-  if (Object.keys(updates).length === 0) {
+  if (Object.keys(profileUpdates).length === 0) {
     return NextResponse.json({ error: 'Aucune modification' }, { status: 400 })
   }
 
-  const { data: profile, error } = await ctx.admin!
+  const { data: profile, error: profileError } = await ctx.admin!
     .from('users')
-    .update(updates)
+    .update(profileUpdates)
     .eq('id', id)
     .select('*')
     .single()
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-
-  // Sync auth metadata si on modifie le nom ou le rôle
-  if (full_name || role) {
-    await ctx.admin!.auth.admin.updateUserById(id, {
-      user_metadata: {
-        ...(full_name && { full_name }),
-        ...(role && { role }),
-      },
-    })
+  if (profileError) {
+    return NextResponse.json({ error: profileError.message }, { status: 500 })
   }
 
   return NextResponse.json({ user: profile })
 }
 
+// DELETE — supprimer un utilisateur
 export async function DELETE(request: Request) {
   const ctx = await getAdminContext()
   if (ctx.error) return NextResponse.json({ error: ctx.error }, { status: ctx.status })
@@ -120,9 +187,7 @@ export async function DELETE(request: Request) {
   const { searchParams } = new URL(request.url)
   const id = searchParams.get('id')
 
-  if (!id) {
-    return NextResponse.json({ error: 'ID manquant' }, { status: 400 })
-  }
+  if (!id) return NextResponse.json({ error: 'ID manquant' }, { status: 400 })
 
   const { error } = await ctx.admin!.auth.admin.deleteUser(id)
 

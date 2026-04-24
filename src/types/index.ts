@@ -155,6 +155,25 @@ export interface ClientAccess {
   client_id: string
 }
 
+export type InvoiceStatus = 'en_attente' | 'payee' | 'en_retard'
+
+export interface Invoice {
+  id: string
+  client_id: string
+  project_id: string | null
+  title: string
+  amount: number
+  status: InvoiceStatus
+  due_date: string | null
+  paid_at: string | null
+  description: string | null
+  created_by: string
+  created_at: string
+  // relations jointes
+  project?: Project
+  client?: User
+}
+
 export interface Notification {
   id: string
   user_id: string
@@ -194,6 +213,12 @@ export const DELIVERY_STATUS_LABELS: Record<DeliveryStatus, string> = {
   en_attente: 'En attente',
   valide: 'Validé',
   revision_demandee: 'Révision demandée',
+}
+
+export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
+  en_attente: 'En attente',
+  payee: 'Payée',
+  en_retard: 'En retard',
 }
 
 export const PROJECT_CATEGORY_LABELS: Record<ProjectCategory, string> = {
